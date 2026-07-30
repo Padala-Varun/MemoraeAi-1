@@ -528,16 +528,28 @@ def create_app() -> FastAPI:
         except Exception:
             raise HTTPException(status_code=400, detail="Invalid JSON payload.")
 
-        logger.info("Composio webhook received: %s", str(body)[:200])
+        logger.info("Composio webhook received: %s", str(body)[:500])
+        data_block = body.get("data", {})
+        logger.info("Data block keys: %s", list(data_block.keys()) if isinstance(data_block, dict) else type(data_block))
+        logger.info("Data block (1000 chars): %s", str(data_block)[:1000])
 
-        # Extract trigger metadata
-        trigger_name = body.get("trigger_name", body.get("triggerName", ""))
-        connected_account_id = body.get(
-            "connected_account_id",
-            body.get("connectedAccountId", ""),
+        # V3 webhook format: {type, metadata: {trigger_slug, ...}, data: {payload: ...}}
+        metadata = body.get("metadata", {})
+        trigger_name = (
+            metadata.get("trigger_slug", "")
+            or body.get("trigger_name", body.get("triggerName", ""))
+        )
+        connected_account_id = (
+            metadata.get("connected_account_id", "")
+            or body.get("connected_account_id", body.get("connectedAccountId", ""))
         )
 
-        # Only process Gmail new message triggers
+        logger.info(
+            "Trigger: %s, connected_account_id: %s",
+            trigger_name, connected_account_id,
+        )
+
+        # Only process Gmail triggers
         if trigger_name and "gmail" not in trigger_name.lower():
             logger.info("Ignoring non-Gmail trigger: %s", trigger_name)
             return {"status": "ignored", "reason": "not a Gmail trigger"}
@@ -570,6 +582,11 @@ def create_app() -> FastAPI:
         # Parse the email from the trigger payload
         from app.composio_integration import parse_email_from_trigger
         email_data = parse_email_from_trigger(body)
+
+        logger.info("Parsed email: subject='%s', body_len=%d, sender='%s'",
+                    email_data.get('subject', '')[:80],
+                    len(email_data.get('body', '')),
+                    email_data.get('sender', ''))
 
         if not email_data.get("subject") and not email_data.get("body"):
             logger.warning("Empty email payload received, skipping.")

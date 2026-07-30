@@ -48,20 +48,41 @@ def get_composio_client() -> Any:
 def parse_email_from_trigger(payload: dict[str, Any]) -> dict[str, str]:
     """Extract email fields from a Composio GMAIL_NEW_GMAIL_MESSAGE trigger payload.
 
+    Handles both v1 (flat) and v3 (nested) webhook formats:
+      v1: {payload: {subject, body, ...}}
+      v3: {data: {payload: {messageText, subject, from, ...}}}
+
     Returns a dict with: subject, body, sender, timestamp, thread_id, message_id
     """
-    # Composio may nest the email data under 'payload' or at the top level
-    email_data = payload.get("payload", payload)
+    # V3 format: email fields may be directly in 'data' or in 'data.payload'
+    data_block = payload.get("data", {})
+    if isinstance(data_block, dict):
+        # Check if data itself has email fields (subject, messageText, from, etc.)
+        if any(k in data_block for k in ("subject", "messageText", "snippet", "from", "threadId")):
+            email_data = data_block
+        else:
+            email_data = data_block.get("payload", {})
+    else:
+        email_data = {}
 
-    subject = email_data.get("subject", "")
-    snippet = email_data.get("snippet", "")
-    body = email_data.get("body", snippet)  # Fall back to snippet if no full body
-    sender = email_data.get("sender", email_data.get("from", "unknown"))
-    thread_id = email_data.get("threadId", email_data.get("thread_id", ""))
-    message_id = email_data.get("id", email_data.get("messageId", ""))
-    timestamp = email_data.get("date", email_data.get("timestamp", ""))
+    # V1 fallback: payload at top level
+    if not email_data:
+        email_data = payload.get("payload", payload)
 
-    # If body is empty, use snippet
+    logger.info("Email data keys: %s", list(email_data.keys()) if isinstance(email_data, dict) else "not-dict")
+
+    if not isinstance(email_data, dict):
+        email_data = {}
+
+    subject = email_data.get("subject", email_data.get("Subject", ""))
+    body = email_data.get("message_text", email_data.get("messageText", email_data.get("body", "")))
+    snippet = email_data.get("preview", email_data.get("snippet", email_data.get("Snippet", "")))
+    sender = email_data.get("sender", email_data.get("from", email_data.get("From", "unknown")))
+    thread_id = email_data.get("thread_id", email_data.get("threadId", ""))
+    message_id = email_data.get("message_id", email_data.get("messageId", email_data.get("id", "")))
+    timestamp = email_data.get("message_timestamp", email_data.get("date", email_data.get("timestamp", "")))
+
+    # Fall back to snippet if body is empty
     if not body and snippet:
         body = snippet
 
