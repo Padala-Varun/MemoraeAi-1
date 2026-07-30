@@ -3,7 +3,7 @@
  * Fetch wrapper for all backend endpoints.
  */
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = 'https://varun1432varun1432--memorae-ai-web.modal.run';
 
 class MemoraeAPI {
     constructor(baseUrl = API_BASE) {
