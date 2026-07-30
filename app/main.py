@@ -13,11 +13,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
 from typing import TypedDict, Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -513,6 +514,154 @@ def create_app() -> FastAPI:
             "message": f"Removed {total} memory(ies) matching '{request.search_text}'.",
         }
 
+    # ── Composio / Gmail Integration Routes ──
+    @app.post("/api/webhooks/composio")
+    async def composio_webhook(request: Request) -> dict[str, object]:
+        """Receive trigger events from Composio (e.g., GMAIL_NEW_GMAIL_MESSAGE).
+
+        Composio POSTs here when a new email arrives. We parse the email,
+        look up the MemoraeAI user from the connected_account_id, and
+        run the email through the memory extraction pipeline.
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid JSON payload.")
+
+        logger.info("Composio webhook received: %s", str(body)[:200])
+
+        # Extract trigger metadata
+        trigger_name = body.get("trigger_name", body.get("triggerName", ""))
+        connected_account_id = body.get(
+            "connected_account_id",
+            body.get("connectedAccountId", ""),
+        )
+
+        # Only process Gmail new message triggers
+        if trigger_name and "gmail" not in trigger_name.lower():
+            logger.info("Ignoring non-Gmail trigger: %s", trigger_name)
+            return {"status": "ignored", "reason": "not a Gmail trigger"}
+
+        # Look up which MemoraeAI user this connected account belongs to
+        from app.db_clients import get_database
+        db = get_database()
+        mapping = await db["composio_connections"].find_one(
+            {"connected_account_id": connected_account_id}
+        )
+
+        if not mapping:
+            # If no mapping found, try to use a default user or log a warning
+            logger.warning(
+                "No user mapping for connected_account_id=%s. "
+                "Checking for default user...",
+                connected_account_id,
+            )
+            # Fall back to finding any user with a Gmail connection
+            mapping = await db["composio_connections"].find_one(
+                {"provider": "gmail"}
+            )
+
+        if not mapping:
+            logger.error("No user found for Composio connected_account_id=%s", connected_account_id)
+            return {"status": "error", "reason": "no user mapping found"}
+
+        user_id = mapping["user_id"]
+
+        # Parse the email from the trigger payload
+        from app.composio_integration import parse_email_from_trigger
+        email_data = parse_email_from_trigger(body)
+
+        if not email_data.get("subject") and not email_data.get("body"):
+            logger.warning("Empty email payload received, skipping.")
+            return {"status": "skipped", "reason": "empty email content"}
+
+        # Process in background (non-blocking)
+        asyncio.create_task(
+            _background_email_processing(user_id, email_data)
+        )
+
+        return {
+            "status": "accepted",
+            "user_id": user_id,
+            "subject": email_data.get("subject", "")[:100],
+        }
+
+    @app.post("/api/integrations/gmail/connect")
+    async def connect_gmail(request: Request) -> dict[str, object]:
+        """Initiate Gmail OAuth connection for a user via Composio.
+
+        The user calls this endpoint, and we return the Composio OAuth URL
+        they need to visit to authorize their Gmail account.
+        """
+        body = await request.json()
+        user_id = body.get("user_id", "").strip()
+        if not user_id:
+            raise HTTPException(status_code=400, detail="user_id is required.")
+
+        try:
+            from app.composio_integration import get_composio_client
+            composio = get_composio_client()
+
+            # Use the v3 `link` method for Composio-managed OAuth
+            connection_request = composio.connected_accounts.link(
+                user_id=user_id,
+                auth_config_id="ac_dfjaCGyc7M_f",  # Gmail auth config
+                callback_url="https://memorae-ai-1.vercel.app/chat.html",
+            )
+
+            connected_account_id = getattr(connection_request, "id", "")
+            redirect_url = getattr(connection_request, "redirect_url", "")
+
+            # Store the mapping in MongoDB
+            from app.db_clients import get_database
+            db = get_database()
+            await db["composio_connections"].update_one(
+                {"user_id": user_id, "provider": "gmail"},
+                {
+                    "$set": {
+                        "user_id": user_id,
+                        "provider": "gmail",
+                        "connected_account_id": connected_account_id,
+                        "status": "pending",
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                },
+                upsert=True,
+            )
+
+            return {
+                "status": "pending",
+                "redirect_url": redirect_url,
+                "connected_account_id": connected_account_id,
+                "message": "Visit the redirect_url to authorize Gmail access.",
+            }
+        except Exception as e:
+            logger.error("Gmail connect failed: %s", e)
+            raise HTTPException(status_code=500, detail=f"Failed to initiate Gmail connection: {e}")
+
+    @app.post("/api/integrations/gmail/status")
+    async def gmail_status(request: Request) -> dict[str, object]:
+        """Check if a user has connected their Gmail account."""
+        body = await request.json()
+        user_id = body.get("user_id", "").strip()
+        if not user_id:
+            raise HTTPException(status_code=400, detail="user_id is required.")
+
+        from app.db_clients import get_database
+        db = get_database()
+        connection = await db["composio_connections"].find_one(
+            {"user_id": user_id, "provider": "gmail"}
+        )
+
+        if connection:
+            return {
+                "connected": True,
+                "provider": "gmail",
+                "status": connection.get("status", "unknown"),
+                "connected_account_id": connection.get("connected_account_id", ""),
+            }
+        return {"connected": False, "provider": "gmail"}
+
     # Mount static files for web frontend
     import os
     web_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web")
@@ -533,6 +682,20 @@ async def _background_memory_extraction(user_id: str, session_id: str) -> None:
             )
     except Exception as e:
         logger.error("Background memory extraction failed: %s", e)
+
+
+async def _background_email_processing(user_id: str, email_data: dict[str, str]) -> None:
+    """Process an email through the memory pipeline in the background."""
+    try:
+        from app.composio_integration import process_email_memory
+        results = await process_email_memory(user_id, email_data)
+        if results:
+            logger.info(
+                "Email memory extraction complete: %d memories for user=%s, subject='%s'",
+                len(results), user_id, email_data.get("subject", "")[:50],
+            )
+    except Exception as e:
+        logger.error("Background email memory processing failed: %s", e)
 
 
 # Application instance for uvicorn

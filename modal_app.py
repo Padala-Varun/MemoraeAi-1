@@ -28,6 +28,7 @@ image = (
         "langgraph>=0.2.0,<0.3.0",
         "httpx>=0.27.0,<0.28.0",
         "python-dotenv>=1.0.0,<2.0.0",
+        "composio>=0.18.0",
     )
     .add_local_dir("app", remote_path="/root/app", copy=True, ignore=["__pycache__"])
     .add_local_dir("web", remote_path="/root/web", copy=True)

@@ -89,6 +89,9 @@ class Settings(BaseSettings):
     QDRANT_URL: str
     QDRANT_API_KEY: str
 
+    # --- Composio (Gmail Integration) ---
+    COMPOSIO_API_KEY: str = ""
+
     # --- App Settings ---
     APP_ENV: str = "development"
     LOG_LEVEL: str = "INFO"

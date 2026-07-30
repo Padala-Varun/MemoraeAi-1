@@ -11,3 +11,4 @@ langchain-mistralai>=0.2.0,<0.3.0
 langgraph>=0.2.0,<0.3.0
 httpx>=0.27.0,<0.28.0
 python-dotenv>=1.0.0,<2.0.0
+composio>=0.18.0
