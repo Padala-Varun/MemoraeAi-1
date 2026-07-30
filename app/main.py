@@ -1,0 +1,539 @@
+"""
+FastAPI application entrypoint — routes, LangGraph wiring, lifespan.
+
+Two LangGraph paths:
+  Write-path (async, after response): detect → route → [pipelines] → mark processed
+  Read-path (sync, for response): parallel_retrieve → forgetting → context → LLM
+
+All routes inline (flat structure, no separate api/ directory).
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+import uuid
+from contextlib import asynccontextmanager
+from collections.abc import AsyncGenerator
+from typing import TypedDict, Any
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+from app.config import get_settings, get_llm_provider
+from app.db_clients import (
+    create_mongo_indexes,
+    close_mongo_client,
+    ensure_qdrant_collections,
+    close_qdrant_client,
+    verify_neo4j_connectivity,
+    setup_neo4j_constraints,
+    close_neo4j_driver,
+)
+from app.schemas import (
+    LoginRequest,
+    LoginResponse,
+    ChatRequest,
+    ChatResponse,
+    HistoryRequest,
+    SessionInfo,
+    SessionsRequest,
+    MemoryListRequest,
+    ForgetRequest,
+    ExtractedMemory,
+)
+from app.user_service import (
+    get_or_create_user,
+    store_message,
+    get_recent_turns,
+    get_full_session_text,
+    mark_memory_processed,
+    get_session_list,
+)
+from app.memory_detector import detect_memories
+from app.memory_router import route_memories
+from app.context_builder import (
+    retrieve_all_context,
+    build_context,
+    build_system_prompt,
+)
+from app.forgetting import explicit_forget
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
+
+
+# ══════════════════════════════════════════════
+# LangGraph State Types
+# ══════════════════════════════════════════════
+
+class MemoryExtractionState(TypedDict):
+    """State flowing through the write-path memory extraction graph."""
+    user_id: str
+    session_id: str
+    recent_turns: list[dict[str, str]]
+    conversation_text: str
+    extracted_memories: list[ExtractedMemory]
+    store_results: list[dict[str, str]]
+    error: str | None
+
+
+class ResponseState(TypedDict):
+    """State flowing through the read-path response generation graph."""
+    user_id: str
+    session_id: str
+    user_message: str
+    retrieved_context: dict[str, object]
+    context_string: str
+    system_prompt: str
+    conversation_turns: list[dict[str, str]]
+    response: str
+    error: str | None
+
+
+# ══════════════════════════════════════════════
+# Write-Path LangGraph (async, after response)
+# ══════════════════════════════════════════════
+
+async def _detect_node(state: MemoryExtractionState) -> dict[str, Any]:
+    """LangGraph node: Run single-call memory detector."""
+    try:
+        result = await detect_memories(
+            conversation_text=state["conversation_text"],
+            recent_turns=state["recent_turns"],
+        )
+        if result.nothing_to_extract:
+            return {"extracted_memories": [], "error": None}
+        return {"extracted_memories": result.memories, "error": None}
+    except Exception as e:
+        logger.error("Detect node failed: %s", e)
+        return {"extracted_memories": [], "error": str(e)}
+
+
+async def _route_and_store_node(state: MemoryExtractionState) -> dict[str, Any]:
+    """LangGraph node: Route memories to pipelines and store."""
+    if not state["extracted_memories"]:
+        return {"store_results": [], "error": None}
+
+    try:
+        from app.schemas import DetectorOutput
+        detector_output = DetectorOutput(
+            nothing_to_extract=False,
+            memories=state["extracted_memories"],
+        )
+        results = await route_memories(
+            detector_output=detector_output,
+            user_id=state["user_id"],
+            session_id=state["session_id"],
+        )
+        return {"store_results": results, "error": None}
+    except Exception as e:
+        logger.error("Route/store node failed: %s", e)
+        return {"store_results": [], "error": str(e)}
+
+
+def _build_write_graph() -> Any:
+    """Build the write-path LangGraph: detect → route+store."""
+    from langgraph.graph import StateGraph, END  # pyrefly: ignore
+
+    graph = StateGraph(MemoryExtractionState)
+    graph.add_node("detect_memory", _detect_node)
+    graph.add_node("route_and_store", _route_and_store_node)
+
+    graph.set_entry_point("detect_memory")
+
+    def should_continue(state: MemoryExtractionState) -> str:
+        if state.get("extracted_memories"):
+            return "route_and_store"
+        return END
+
+    graph.add_conditional_edges(
+        "detect_memory",
+        should_continue,
+        {"route_and_store": "route_and_store", END: END},
+    )
+    graph.add_edge("route_and_store", END)
+
+    return graph.compile()
+
+
+# ══════════════════════════════════════════════
+# Read-Path LangGraph (sync, for response)
+# ══════════════════════════════════════════════
+
+async def _retrieve_node(state: ResponseState) -> dict[str, Any]:
+    """LangGraph node: Retrieve memories from all backends."""
+    try:
+        context = await retrieve_all_context(
+            user_id=state["user_id"],
+            query=state["user_message"],
+        )
+        turns = await get_recent_turns(
+            user_id=state["user_id"],
+            session_id=state["session_id"],
+            limit=6,
+        )
+        return {
+            "retrieved_context": context,
+            "conversation_turns": turns,
+            "error": None,
+        }
+    except Exception as e:
+        logger.error("Retrieve node failed: %s", e)
+        return {"retrieved_context": {}, "conversation_turns": [], "error": str(e)}
+
+
+async def _build_context_node(state: ResponseState) -> dict[str, Any]:
+    """LangGraph node: Build priority-scored context."""
+    try:
+        ctx = state.get("retrieved_context", {})
+        context_str = build_context(
+            profile=ctx.get("profile"),  # pyrefly: ignore
+            goals=ctx.get("goals", []),  # pyrefly: ignore
+            semantic_facts=ctx.get("semantic", []),  # pyrefly: ignore
+            episodic_memories=ctx.get("episodic", []),  # pyrefly: ignore
+            conversation_turns=state.get("conversation_turns", []),
+        )
+        system_prompt = build_system_prompt(context_str)
+        return {"context_string": context_str, "system_prompt": system_prompt, "error": None}
+    except Exception as e:
+        logger.error("Build context node failed: %s", e)
+        return {"context_string": "", "system_prompt": build_system_prompt(""), "error": str(e)}
+
+
+async def _call_llm_node(state: ResponseState) -> dict[str, Any]:
+    """LangGraph node: Generate response via configurable LLM provider."""
+    try:
+        llm = get_llm_provider()
+        response_text = await llm.generate_text(
+            prompt=state["user_message"],
+            system_prompt=state["system_prompt"],
+            temperature=0.7,
+        )
+        return {"response": response_text, "error": None}
+    except Exception as e:
+        logger.error("Call LLM node failed: %s", e)
+        return {
+            "response": "I'm sorry, I encountered an error generating a response. Please try again.",
+            "error": str(e),
+        }
+
+
+def _build_read_graph() -> Any:
+    """Build the read-path LangGraph: retrieve → context → LLM."""
+    from langgraph.graph import StateGraph, END  # pyrefly: ignore
+
+    graph = StateGraph(ResponseState)
+    graph.add_node("retrieve_context", _retrieve_node)
+    graph.add_node("build_context", _build_context_node)
+    graph.add_node("call_llm", _call_llm_node)
+
+    graph.set_entry_point("retrieve_context")
+    graph.add_edge("retrieve_context", "build_context")
+    graph.add_edge("build_context", "call_llm")
+    graph.add_edge("call_llm", END)
+
+    return graph.compile()
+
+
+# Compiled graph singletons
+_write_graph: Any = None
+_read_graph: Any = None
+
+
+def get_write_graph() -> Any:
+    global _write_graph
+    if _write_graph is None:
+        _write_graph = _build_write_graph()
+    return _write_graph
+
+
+def get_read_graph() -> Any:
+    global _read_graph
+    if _read_graph is None:
+        _read_graph = _build_read_graph()
+    return _read_graph
+
+
+# ══════════════════════════════════════════════
+# High-level pipeline functions
+# ══════════════════════════════════════════════
+
+async def run_memory_extraction(user_id: str, session_id: str) -> list[dict[str, str]]:
+    """Run the full write-path memory extraction pipeline."""
+    assert user_id and user_id.strip(), "user_id MUST be provided."
+
+    recent_turns = await get_recent_turns(user_id, session_id, limit=6)
+    conversation_text = await get_full_session_text(user_id, session_id)
+
+    if not recent_turns:
+        return []
+
+    compiled = get_write_graph()
+    initial_state: MemoryExtractionState = {
+        "user_id": user_id,
+        "session_id": session_id,
+        "recent_turns": recent_turns,
+        "conversation_text": conversation_text,
+        "extracted_memories": [],
+        "store_results": [],
+        "error": None,
+    }
+
+    result = await compiled.ainvoke(initial_state)
+    store_results = result.get("store_results", [])
+
+    # Mark messages as processed
+    await mark_memory_processed(user_id, session_id)
+
+    logger.info(
+        "Memory extraction complete: user=%s, session=%s, %d memories.",
+        user_id, session_id, len(store_results),
+    )
+    return store_results
+
+
+async def generate_response(user_id: str, session_id: str, user_message: str) -> str:
+    """Run the full read-path response generation pipeline."""
+    assert user_id and user_id.strip(), "user_id MUST be provided."
+
+    compiled = get_read_graph()
+    initial_state: ResponseState = {
+        "user_id": user_id,
+        "session_id": session_id,
+        "user_message": user_message,
+        "retrieved_context": {},
+        "context_string": "",
+        "system_prompt": "",
+        "conversation_turns": [],
+        "response": "",
+        "error": None,
+    }
+
+    result = await compiled.ainvoke(initial_state)
+    return result.get("response", "I'm sorry, I couldn't generate a response.")
+
+
+# ══════════════════════════════════════════════
+# FastAPI Application
+# ══════════════════════════════════════════════
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # pyrefly: ignore
+    """Application lifespan: startup and shutdown hooks."""
+    settings = get_settings()
+    logger.info("MemoraeAI starting up (env=%s)...", settings.APP_ENV)
+
+    # MongoDB indexes
+    try:
+        await create_mongo_indexes()
+        logger.info("✓ MongoDB connected and indexes ready.")
+    except Exception as e:
+        logger.error("✗ MongoDB startup failed: %s", e)
+
+    # Qdrant collections
+    try:
+        ensure_qdrant_collections()
+        logger.info("✓ Qdrant connected and collections ready.")
+    except Exception as e:
+        logger.error("✗ Qdrant startup failed: %s", e)
+
+    # Neo4j connectivity and constraints
+    try:
+        connected = await verify_neo4j_connectivity()
+        if connected:
+            await setup_neo4j_constraints()
+            logger.info("✓ Neo4j connected and constraints ready.")
+        else:
+            logger.warning("✗ Neo4j connectivity check failed — will retry on first use.")
+    except Exception as e:
+        logger.error("✗ Neo4j startup failed: %s", e)
+
+    logger.info("MemoraeAI startup complete. Serving requests.")
+
+    yield
+
+    # Shutdown
+    logger.info("MemoraeAI shutting down...")
+    await close_mongo_client()
+    close_qdrant_client()
+    await close_neo4j_driver()
+    logger.info("All connections closed. Goodbye.")
+
+
+def create_app() -> FastAPI:
+    """Create and configure the FastAPI application."""
+    settings = get_settings()
+
+    app = FastAPI(
+        title="MemoraeAI",
+        description="Multi-Agent Memory System with Episodic, Semantic, Profile & Goals layers",
+        version="0.2.0",
+        lifespan=lifespan,
+    )
+
+    # CORS
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins_list + ["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # ── Health Check ──
+    @app.get("/health")
+    async def health_check() -> dict[str, str]:
+        return {"status": "ok", "service": "memorae-ai"}
+
+    # ── User Routes ──
+    @app.post("/api/user/login", response_model=LoginResponse)
+    async def login(request: LoginRequest) -> LoginResponse:
+        """Look up or create a user by username."""
+        try:
+            user_id = await get_or_create_user(request.username)
+            return LoginResponse(
+                user_id=user_id,
+                username=request.username.strip().lower(),
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    # ── Chat Routes ──
+    @app.post("/api/chat/send", response_model=ChatResponse)
+    async def send_message(request: ChatRequest) -> ChatResponse:
+        """Send a message and receive an AI response with memory context."""
+        if not request.user_id.strip():
+            raise HTTPException(status_code=400, detail="user_id is required.")
+
+        session_id = request.session_id or str(uuid.uuid4())
+
+        # Step 1: Store user message IMMEDIATELY
+        await store_message(
+            user_id=request.user_id,
+            session_id=session_id,
+            role="user",
+            content=request.message,
+        )
+
+        # Step 2: Generate response via read-path LangGraph
+        response_text = await generate_response(
+            user_id=request.user_id,
+            session_id=session_id,
+            user_message=request.message,
+        )
+
+        # Step 3: Store assistant response
+        await store_message(
+            user_id=request.user_id,
+            session_id=session_id,
+            role="assistant",
+            content=response_text,
+        )
+
+        # Step 4: Trigger async memory extraction (non-blocking)
+        asyncio.create_task(
+            _background_memory_extraction(request.user_id, session_id)
+        )
+
+        return ChatResponse(
+            session_id=session_id,
+            response=response_text,
+            memories_extracted=True,
+        )
+
+    @app.post("/api/chat/history")
+    async def get_history(request: HistoryRequest) -> list[dict[str, str]]:
+        """Get recent conversation history for a session."""
+        if not request.user_id.strip():
+            raise HTTPException(status_code=400, detail="user_id is required.")
+        return await get_recent_turns(
+            user_id=request.user_id,
+            session_id=request.session_id,
+            limit=request.limit,
+        )
+
+    @app.post("/api/chat/sessions", response_model=list[SessionInfo])
+    async def list_sessions(request: SessionsRequest) -> list[SessionInfo]:
+        """List all chat sessions for a user."""
+        if not request.user_id.strip():
+            raise HTTPException(status_code=400, detail="user_id is required.")
+
+        sessions = await get_session_list(request.user_id)
+        return [
+            SessionInfo(
+                session_id=str(s["session_id"]),
+                title=str(s["title"]),
+                created_at=str(s["created_at"]),
+                message_count=int(s["message_count"]),  # pyrefly: ignore
+            )
+            for s in sessions
+        ]
+
+    # ── Memory Routes ──
+    @app.post("/api/memories/list")
+    async def list_memories(request: MemoryListRequest) -> dict[str, object]:
+        """List all stored memories for a user across all backends."""
+        if not request.user_id.strip():
+            raise HTTPException(status_code=400, detail="user_id is required.")
+
+        context = await retrieve_all_context(
+            user_id=request.user_id,
+            query="",
+        )
+        return {
+            "user_id": request.user_id,
+            "episodic": context.get("episodic", []),
+            "semantic": context.get("semantic", []),
+            "profile": context.get("profile"),
+            "goals": context.get("goals", []),
+        }
+
+    @app.post("/api/memories/forget")
+    async def forget_memory(request: ForgetRequest) -> dict[str, object]:
+        """Explicitly forget memories matching the search text."""
+        if not request.user_id.strip():
+            raise HTTPException(status_code=400, detail="user_id is required.")
+
+        results = await explicit_forget(
+            user_id=request.user_id,
+            search_text=request.search_text,
+        )
+        total = sum(results.values())
+        return {
+            "status": "completed",
+            "deleted": results,
+            "total_deleted": total,
+            "message": f"Removed {total} memory(ies) matching '{request.search_text}'.",
+        }
+
+    # Mount static files for web frontend
+    import os
+    web_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web")
+    if os.path.isdir(web_dir):
+        app.mount("/web", StaticFiles(directory=web_dir, html=True), name="web")
+
+    return app
+
+
+async def _background_memory_extraction(user_id: str, session_id: str) -> None:
+    """Run memory extraction in the background (non-blocking)."""
+    try:
+        results = await run_memory_extraction(user_id, session_id)
+        if results:
+            logger.info(
+                "Background extraction complete: %d memories for user=%s session=%s",
+                len(results), user_id, session_id,
+            )
+    except Exception as e:
+        logger.error("Background memory extraction failed: %s", e)
+
+
+# Application instance for uvicorn
+app = create_app()

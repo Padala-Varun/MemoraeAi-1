@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Chat with MemoraeAI — an AI assistant that remembers your conversations, preferences, and goals.">
+    <title>MemoraeAI — Chat</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/chat.css">
+</head>
+<body>
+    <div class="animated-bg"></div>
+
+    <div class="chat-page">
+        <!-- Navigation Header -->
+        <nav class="nav-header">
+            <div class="nav-logo">
+                <span class="nav-logo-icon">🧠</span>
+                <span class="gradient-text">MemoraeAI</span>
+            </div>
+            <div class="nav-links">
+                <a href="chat.html" class="nav-link active" id="nav-chat">Chat</a>
+                <a href="memories.html" class="nav-link" id="nav-memories">Memories</a>
+                <div class="extraction-badge" id="extraction-badge">
+                    <div class="spinner spinner-sm"></div>
+                    <span>Extracting memories...</span>
+                </div>
+            </div>
+            <div class="nav-user">
+                <span id="nav-user-name"></span>
+                <div class="nav-user-avatar" id="nav-user-avatar"></div>
+                <button class="btn btn-ghost btn-sm" id="logout-btn" title="Logout">↗</button>
+            </div>
+        </nav>
+
+        <div class="chat-layout">
+            <!-- Sidebar -->
+            <aside class="chat-sidebar" id="chat-sidebar">
+                <div class="sidebar-header">
+                    <span class="sidebar-title">Sessions</span>
+                    <button class="btn btn-primary btn-sm" id="new-chat-btn">
+                        ✦ New Chat
+                    </button>
+                </div>
+                <div class="session-list" id="session-list">
+                    <div style="display:flex;justify-content:center;padding:40px;">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Sidebar Overlay (mobile) -->
+            <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+            <!-- Main Chat Area -->
+            <div class="chat-main">
+                <div class="chat-header">
+                    <div class="chat-header-left">
+                        <button class="btn btn-ghost btn-icon sidebar-toggle" id="sidebar-toggle">☰</button>
+                        <h1 class="chat-header-title">Chat</h1>
+                    </div>
+                    <div class="chat-status">
+                        <div class="status-dot"></div>
+                        <span>Online</span>
+                    </div>
+                </div>
+
+                <!-- Welcome Screen -->
+                <div class="welcome-container" id="welcome-container">
+                    <div class="welcome-message">
+                        <span class="welcome-icon">🧠</span>
+                        <h2 class="welcome-title gradient-text">How can I help you today?</h2>
+                        <p class="welcome-subtitle">
+                            I remember our conversations, your preferences, and goals.
+                            Start chatting and I'll build a deeper understanding over time.
+                        </p>
+                        <div class="welcome-suggestions">
+                            <button class="suggestion-chip">Tell me about yourself</button>
+                            <button class="suggestion-chip">What do you remember about me?</button>
+                            <button class="suggestion-chip">I have a new goal</button>
+                            <button class="suggestion-chip">Let's catch up</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Messages -->
+                <div class="messages-container" id="messages-container" style="display:none;"></div>
+
+                <!-- Input Area -->
+                <div class="chat-input-area">
+                    <div class="chat-input-wrapper">
+                        <textarea
+                            id="chat-input"
+                            class="chat-input"
+                            placeholder="Type a message..."
+                            rows="1"
+                            maxlength="4000"
+                        ></textarea>
+                        <button class="btn btn-primary send-btn" id="send-btn" disabled title="Send message">
+                            ➤
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/chat.js"></script>
+</body>
+</html>

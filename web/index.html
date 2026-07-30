@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MemoraeAI — An AI assistant that remembers. Sign in to start your personalized conversation experience.">
+    <title>MemoraeAI — Sign In</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/login.css">
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg"></div>
+    <canvas id="neural-canvas" class="neural-canvas"></canvas>
+
+    <!-- Login Container -->
+    <main class="login-page">
+        <div class="login-container">
+            <div class="login-card glass-card">
+                <div class="login-header">
+                    <div class="login-logo">🧠</div>
+                    <h1 class="login-title">
+                        <span class="gradient-text">MemoraeAI</span>
+                    </h1>
+                    <p class="login-subtitle">
+                        An AI assistant with persistent memory.<br>
+                        Every conversation builds understanding.
+                    </p>
+                </div>
+
+                <form id="login-form" class="login-form">
+                    <div id="login-error" class="login-error"></div>
+
+                    <div class="input-group">
+                        <label for="username-input" class="input-label">Username</label>
+                        <div style="position: relative;">
+                            <span class="input-icon">👤</span>
+                            <input
+                                type="text"
+                                id="username-input"
+                                class="input-field login-input"
+                                placeholder="Enter your username"
+                                autocomplete="username"
+                                autofocus
+                                required
+                                minlength="2"
+                                maxlength="64"
+                            >
+                        </div>
+                    </div>
+
+                    <button type="submit" id="login-btn" class="btn btn-primary login-btn">
+                        <span class="btn-text">Continue to Chat</span>
+                        <div class="spinner spinner-sm"></div>
+                    </button>
+                </form>
+
+                <div class="login-features">
+                    <div class="login-feature">
+                        <span class="login-feature-icon">⚡</span>
+                        <span>Episodic Memory</span>
+                    </div>
+                    <div class="login-feature">
+                        <span class="login-feature-icon">🔗</span>
+                        <span>Knowledge Graph</span>
+                    </div>
+                    <div class="login-feature">
+                        <span class="login-feature-icon">🎯</span>
+                        <span>Goal Tracking</span>
+                    </div>
+                    <div class="login-feature">
+                        <span class="login-feature-icon">👤</span>
+                        <span>User Profile</span>
+                    </div>
+                </div>
+
+                <p class="login-footer">
+                    No password required — just pick a username to get started.
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/login.js"></script>
+</body>
+</html>

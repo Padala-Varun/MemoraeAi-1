@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Browse and manage your MemoraeAI memories — episodic events, semantic knowledge, profile, and goals.">
+    <title>MemoraeAI — Memories</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/memories.css">
+</head>
+<body>
+    <div class="animated-bg"></div>
+
+    <div class="memories-page">
+        <!-- Navigation Header -->
+        <nav class="nav-header">
+            <div class="nav-logo">
+                <span class="nav-logo-icon">🧠</span>
+                <span class="gradient-text">MemoraeAI</span>
+            </div>
+            <div class="nav-links">
+                <a href="chat.html" class="nav-link" id="nav-chat">Chat</a>
+                <a href="memories.html" class="nav-link active" id="nav-memories">Memories</a>
+            </div>
+            <div class="nav-user">
+                <span id="nav-user-name"></span>
+                <div class="nav-user-avatar" id="nav-user-avatar"></div>
+                <button class="btn btn-ghost btn-sm" id="logout-btn" title="Logout">↗</button>
+            </div>
+        </nav>
+
+        <main class="memories-content">
+            <!-- Page Header -->
+            <div class="memories-header">
+                <h1 class="memories-title">
+                    <span class="gradient-text">Memory Bank</span>
+                </h1>
+                <p class="memories-subtitle">Everything I remember about you — organized by type.</p>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card glass-card">
+                    <div class="stat-value episodic" id="stat-episodic">—</div>
+                    <div class="stat-label">Episodic</div>
+                </div>
+                <div class="stat-card glass-card">
+                    <div class="stat-value semantic" id="stat-semantic">—</div>
+                    <div class="stat-label">Semantic</div>
+                </div>
+                <div class="stat-card glass-card">
+                    <div class="stat-value profile" id="stat-profile">—</div>
+                    <div class="stat-label">Profile</div>
+                </div>
+                <div class="stat-card glass-card">
+                    <div class="stat-value goal" id="stat-goals">—</div>
+                    <div class="stat-label">Goals</div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="memories-controls">
+                <div class="filter-tabs">
+                    <button class="filter-tab active" data-filter="all">All</button>
+                    <button class="filter-tab" data-filter="episodic">⚡ Episodic</button>
+                    <button class="filter-tab" data-filter="semantic">🔗 Semantic</button>
+                    <button class="filter-tab" data-filter="profile">👤 Profile</button>
+                    <button class="filter-tab" data-filter="goal">🎯 Goals</button>
+                </div>
+
+                <form class="forget-input-group" id="forget-form">
+                    <input
+                        type="text"
+                        id="forget-input"
+                        class="input-field forget-input"
+                        placeholder="Describe what to forget..."
+                    >
+                    <button type="submit" class="btn btn-danger btn-sm" id="forget-btn">Forget</button>
+                </form>
+            </div>
+
+            <!-- Memories Grid -->
+            <div class="memories-grid" id="memories-grid">
+                <div style="grid-column:1/-1;display:flex;justify-content:center;padding:60px;">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/memories.js"></script>
+</body>
+</html>

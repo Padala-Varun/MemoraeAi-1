@@ -1,0 +1,339 @@
+/* ═══════════════════════════════════════════════
+   Memories Dashboard Styles
+   Memory browser with stats, filters, and cards
+   ═══════════════════════════════════════════════ */
+
+.memories-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.memories-content {
+    flex: 1;
+    padding: var(--space-xl) var(--space-2xl);
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* ── Page Title ── */
+.memories-header {
+    margin-bottom: var(--space-xl);
+    animation: fade-in 0.4s ease-out;
+}
+
+.memories-title {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-bottom: var(--space-sm);
+    letter-spacing: -0.5px;
+}
+
+.memories-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* ── Stats Grid ── */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+    animation: fade-in 0.5s ease-out 0.1s both;
+}
+
+.stat-card .stat-value.episodic { color: var(--color-episodic); }
+.stat-card .stat-value.semantic { color: var(--color-semantic); }
+.stat-card .stat-value.profile { color: var(--color-profile); }
+.stat-card .stat-value.goal { color: var(--color-goal); }
+
+/* ── Controls Bar ── */
+.memories-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
+    animation: fade-in 0.5s ease-out 0.2s both;
+    flex-wrap: wrap;
+}
+
+.filter-tabs {
+    display: flex;
+    gap: 4px;
+    background: rgba(15, 23, 42, 0.5);
+    padding: 4px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+}
+
+.filter-tab {
+    padding: var(--space-sm) var(--space-md);
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-family: var(--font-sans);
+}
+
+.filter-tab:hover {
+    color: var(--text-secondary);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.filter-tab.active {
+    background: var(--accent-gradient);
+    color: white;
+    font-weight: 600;
+}
+
+.forget-input-group {
+    display: flex;
+    gap: var(--space-sm);
+}
+
+.forget-input {
+    padding: 10px 16px;
+    width: 250px;
+    font-size: 0.85rem;
+}
+
+/* ── Memories Grid ── */
+.memories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: var(--space-md);
+    animation: fade-in 0.5s ease-out 0.3s both;
+}
+
+/* ── Memory Card ── */
+.memory-card {
+    padding: var(--space-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    transition: all var(--transition-base);
+    animation: slide-up 0.3s ease-out;
+}
+
+.memory-card:hover {
+    transform: translateY(-3px);
+}
+
+.memory-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.memory-card-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.memory-importance {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.importance-bar {
+    display: flex;
+    gap: 1.5px;
+}
+
+.importance-segment {
+    width: 4px;
+    height: 12px;
+    border-radius: 1px;
+    background: rgba(99, 102, 241, 0.2);
+    transition: background var(--transition-fast);
+}
+
+.importance-segment.filled {
+    background: var(--accent-mid);
+}
+
+.memory-content {
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: var(--text-primary);
+}
+
+.memory-quote {
+    font-size: 0.78rem;
+    font-style: italic;
+    color: var(--text-muted);
+    padding-left: var(--space-md);
+    border-left: 2px solid var(--glass-border);
+    line-height: 1.5;
+}
+
+.memory-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.memory-date {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+}
+
+/* ── Semantic Triple ── */
+.triple-display {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    background: rgba(16, 185, 129, 0.06);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    flex-wrap: wrap;
+}
+
+.triple-subject {
+    color: var(--color-semantic);
+    font-weight: 600;
+}
+
+.triple-arrow {
+    color: var(--text-muted);
+}
+
+.triple-predicate {
+    color: var(--text-accent);
+}
+
+.triple-object {
+    color: var(--color-profile);
+    font-weight: 600;
+}
+
+/* ── Profile Section ── */
+.profile-section {
+    margin-bottom: var(--space-xl);
+}
+
+.profile-card {
+    padding: var(--space-xl);
+}
+
+.profile-field {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-md);
+    padding: var(--space-md) 0;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+}
+
+.profile-field:last-child {
+    border-bottom: none;
+}
+
+.profile-field-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 100px;
+}
+
+.profile-field-value {
+    font-size: 0.88rem;
+    color: var(--text-primary);
+}
+
+/* ── Goals Section ── */
+.goal-card {
+    padding: var(--space-lg);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-md);
+}
+
+.goal-status-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+
+.goal-active .goal-status-icon {
+    background: rgba(168, 85, 247, 0.15);
+    color: var(--color-goal);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.goal-completed .goal-status-icon {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--color-success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.goal-info {
+    flex: 1;
+}
+
+.goal-description {
+    font-size: 0.88rem;
+    font-weight: 500;
+    margin-bottom: var(--space-xs);
+}
+
+.goal-meta {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .memories-content {
+        padding: var(--space-md);
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .memories-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .memories-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .forget-input-group {
+        width: 100%;
+    }
+
+    .forget-input {
+        flex: 1;
+        width: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
