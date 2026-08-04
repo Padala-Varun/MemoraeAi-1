@@ -46,6 +46,7 @@ DETECTOR_SYSTEM_PROMPT = """You are a precise memory extraction and scoring syst
    - "semantic_fact": A factual statement — MUST include subject, predicate, and object fields (e.g., "I'm allergic to peanuts")
    - "profile_update": Identity info, preferences, characteristics (e.g., "I prefer dark mode")
    - "goal": Something the user wants to achieve (e.g., "I'm trying to learn Spanish")
+   - "goal_completed": The user indicates they have FINISHED, CLEARED, DONE, RESOLVED, or COMPLETED a previously mentioned task or goal (e.g., "I paid the Google bill", "I have cleared the payment", "done with the interview"). The content should describe what was completed.
 6. For semantic_fact type, you MUST provide subject, predicate, and object to form a knowledge triple.
 7. Do NOT extract: greetings, pleasantries, small talk, questions (unless revealing info), assistant responses, vague/ambiguous info.
 

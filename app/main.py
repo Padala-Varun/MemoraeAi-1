@@ -488,12 +488,23 @@ def create_app() -> FastAPI:
             user_id=request.user_id,
             query="",
         )
+
+        # Fetch ALL goals (active + completed) for the memories page,
+        # not just active ones like the chat context uses.
+        from app.db_clients import goals_collection
+        goals_col = goals_collection()
+        all_goals_cursor = goals_col.find(
+            {"user_id": request.user_id},
+            {"_id": 0},
+        ).sort("priority", -1).limit(50)
+        all_goals = await all_goals_cursor.to_list(length=50)
+
         return {
             "user_id": request.user_id,
             "episodic": context.get("episodic", []),
             "semantic": context.get("semantic", []),
             "profile": context.get("profile"),
-            "goals": context.get("goals", []),
+            "goals": all_goals,
         }
 
     @app.post("/api/memories/forget")

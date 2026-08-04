@@ -30,7 +30,7 @@ class ExtractedMemory(BaseModel):
     single LLM call (merged extraction + scoring).
     """
 
-    type: Literal["episodic", "semantic_fact", "profile_update", "goal"] = Field(
+    type: Literal["episodic", "semantic_fact", "profile_update", "goal", "goal_completed"] = Field(
         ..., description="Classification of the memory type."
     )
     content: str = Field(

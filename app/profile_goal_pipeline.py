@@ -208,3 +208,87 @@ async def handle_goal(
         })
         logger.info("Goal created for user %s: '%s'", user_id, memory.content[:50])
         return {"type": "goal", "action": "created"}
+
+
+async def handle_goal_completed(
+    memory: ExtractedMemory,
+    user_id: str,
+) -> dict[str, str]:
+    """Mark matching active goals as completed.
+
+    Uses word-overlap matching to find the best-matching active goal,
+    since the user's phrasing when completing ("I paid the Google bill")
+    will differ from the original goal description ("Resolve Google One
+    payment issue").
+
+    Args:
+        memory: The extracted goal_completed memory.
+        user_id: Owner user ID.
+
+    Returns:
+        Dict with 'type' and 'action'.
+    """
+    assert user_id and user_id.strip(), "user_id MUST be provided."
+
+    collection = goals_collection()
+    now = datetime.now(timezone.utc)
+
+    # Fetch all active goals for this user
+    cursor = collection.find({"user_id": user_id, "status": "active"})
+    active_goals = await cursor.to_list(length=100)
+
+    if not active_goals:
+        logger.info("No active goals to complete for user %s", user_id)
+        return {"type": "goal_completed", "action": "no_match"}
+
+    # Fuzzy match: find the goal with the highest word overlap
+    completed_words = set(memory.content.lower().split())
+    # Remove common stop words for better matching
+    stop_words = {"i", "have", "has", "the", "a", "an", "my", "is", "was",
+                  "been", "it", "to", "and", "of", "for", "that", "this",
+                  "done", "completed", "cleared", "finished", "resolved",
+                  "paid", "fixed"}
+    completed_words -= stop_words
+
+    best_match = None
+    best_score = 0
+
+    for goal in active_goals:
+        desc = goal.get("description", "")
+        goal_words = set(desc.lower().split()) - stop_words
+        if not goal_words:
+            continue
+        overlap = len(completed_words & goal_words)
+        # Normalize by the smaller set size
+        score = overlap / max(min(len(completed_words), len(goal_words)), 1)
+        if score > best_score:
+            best_score = score
+            best_match = goal
+
+    # Require at least some meaningful overlap
+    if best_match and best_score >= 0.2:
+        await collection.update_one(
+            {"_id": best_match["_id"]},
+            {
+                "$set": {
+                    "status": "completed",
+                    "completed_at": now,
+                    "last_accessed_at": now,
+                },
+                "$push": {
+                    "progress_notes": f"Completed: {memory.content}"
+                },
+            },
+        )
+        logger.info(
+            "Goal completed for user %s: '%s' (matched: '%s', score=%.2f)",
+            user_id, memory.content[:50],
+            best_match.get("description", "")[:50], best_score,
+        )
+        return {"type": "goal_completed", "action": "completed"}
+    else:
+        logger.info(
+            "Goal completion did not match any active goal for user %s: '%s' (best_score=%.2f)",
+            user_id, memory.content[:50], best_score,
+        )
+        return {"type": "goal_completed", "action": "no_match"}

@@ -110,6 +110,10 @@ async def _dispatch_single(
         from app.profile_goal_pipeline import handle_goal as goal_handle
         return await goal_handle(memory, user_id)
 
+    elif memory.type == "goal_completed":
+        from app.profile_goal_pipeline import handle_goal_completed
+        return await handle_goal_completed(memory, user_id)
+
     else:
         logger.warning("Unknown memory type: %s", memory.type)
         return {"type": memory.type, "action": "skipped"}
