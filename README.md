@@ -1,3 +1,17 @@
+Description = We're not building another chatbot , we're    
+              building the memory layer for enterprise AI.
+
+              Every organization has a memory problem.
+
+              Critical knowledge is scattered across Gmail, Google Chat, meetings, and employee conversations. When people leave or projects evolve, valuable context is lost, forcing teams to repeat the same discussions and decisions.
+
+              Meet Memora, an Enterprise Memory Agent that transforms everyday communication into a persistent organizational memory. Using AI, Memora automatically detects important information, classifies it into long-term memory, connects related knowledge through a knowledge graph, and retrieves the right context whenever it's needed.
+
+Demo Link   = https://www.youtube.com/watch?v=bbaifPpQyIw&t=4s
+
+Github Repo = https://github.com/Padala-Varun/MemoraeAi-1
+
+
 <div align="center">
 
 # 🧠 Memora
@@ -15,7 +29,7 @@ Transform emails, conversations, and organizational knowledge into persistent AI
 ![MongoDB](https://img.shields.io/badge/MongoDB-Database-47A248?style=for-the-badge&logo=mongodb)
 ![Qdrant](https://img.shields.io/badge/Qdrant-Vector_DB-DC244C?style=for-the-badge)
 ![Neo4j](https://img.shields.io/badge/Neo4j-Knowledge_Graph-4581C3?style=for-the-badge&logo=neo4j)
-![Mastra](https://img.shields.io/badge/Mastra-Agent_Framework-black?style=for-the-badge)
+![LangGraph](https://img.shields.io/badge/LangGraph-Agent_Framework-black?style=for-the-badge)
 
 </div>
 
@@ -229,7 +243,7 @@ Grounded AI Response
 |--------|------------|
 | Frontend | Next.js |
 | Backend | FastAPI |
-| Agent Framework | Mastra |
+| Agent Framework | LangGraph |
 | LLM | Mistral |
 | Embeddings | Mistral Embeddings |
 | Vector Database | Qdrant |
