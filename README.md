@@ -1,125 +1,413 @@
-# MemoraeAI — Multi-Agent Memory System
+<div align="center">
 
-A production-quality AI memory layer with episodic, semantic, profile, and goal memory types. Built with Python, FastAPI, LangGraph, Qdrant, Neo4j, and MongoDB.
+# 🧠 Memora
 
-## Architecture
+### Enterprise Memory Agent
+
+**Organizations Forget. Memora Doesn't.**
+
+Transform emails, conversations, and organizational knowledge into persistent AI memory.
+
+---
+
+![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.116-009688?style=for-the-badge&logo=fastapi)
+![MongoDB](https://img.shields.io/badge/MongoDB-Database-47A248?style=for-the-badge&logo=mongodb)
+![Qdrant](https://img.shields.io/badge/Qdrant-Vector_DB-DC244C?style=for-the-badge)
+![Neo4j](https://img.shields.io/badge/Neo4j-Knowledge_Graph-4581C3?style=for-the-badge&logo=neo4j)
+![Mastra](https://img.shields.io/badge/Mastra-Agent_Framework-black?style=for-the-badge)
+
+</div>
+
+---
+
+# 🚀 Overview
+
+Memora is an **Enterprise Memory Agent** that continuously captures, understands, and remembers organizational knowledge from emails, conversations, and user interactions.
+
+Unlike traditional chatbots or Retrieval-Augmented Generation (RAG) systems that only search documents, Memora builds **persistent organizational memory**.
+
+Every important conversation becomes institutional knowledge.
+
+---
+
+# 💡 The Problem
+
+Organizations lose valuable knowledge every day.
+
+Knowledge is scattered across:
+
+- 📧 Gmail
+- 💬 Google Chat
+- 👥 Employee conversations
+- 📄 Documents
+- 🗂 Project discussions
+
+When employees leave...
+
+Knowledge leaves with them.
+
+Traditional AI assistants only remember the current conversation.
+
+Memora remembers your organization.
+
+---
+
+# ✨ Features
+
+- 🧠 Long-Term Memory
+- 📧 Gmail Integration
+- 💬 Google Chat Integration
+- 🤖 AI Memory Detection
+- ⭐ Importance Scoring
+- 📂 Multi-Type Memory Storage
+- 🔍 Semantic Retrieval
+- 🕸 Knowledge Graph
+- 👤 User Profile Memory
+- 🎯 Goal Memory
+- ⚡ Context-Aware AI Responses
+- 🔄 Continuous Learning
+
+---
+
+# 🏗 Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    FastAPI + LangGraph                      │
-│                                                             │
-│  ┌─────────────┐    ┌──────────────┐    ┌───────────────┐  │
-│  │ Read Path   │    │  Write Path  │    │  Forgetting   │  │
-│  │ retrieve →  │    │  detect →    │    │  soft decay + │  │
-│  │ context →   │    │  route →     │    │  hard delete  │  │
-│  │ LLM        │    │  pipelines   │    │  + user forget│  │
-│  └─────────────┘    └──────────────┘    └───────────────┘  │
-│         │                  │                    │           │
-│  ┌──────┴──────────────────┴────────────────────┴────────┐ │
-│  │              Memory Detector (single LLM call)        │ │
-│  │         extract + score + self-verify in one pass     │ │
-│  └───────────────────────────────────────────────────────┘ │
-│         │                  │                    │           │
-│  ┌──────┴───────┐  ┌──────┴───────┐    ┌───────┴────────┐ │
-│  │   Qdrant     │  │    Neo4j     │    │    MongoDB     │ │
-│  │  episodic +  │  │  semantic    │    │  users, conv,  │ │
-│  │  semantic    │  │  triples     │    │  profile, goal │ │
-│  │  (vectors)   │  │  (graph)     │    │  (documents)   │ │
-│  └──────────────┘  └──────────────┘    └────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
+                Gmail
+                  │
+                  │
+          Google Chat
+                  │
+                  │
+        User Conversations
+                  │
+                  ▼
+            Composio Events
+                  │
+                  ▼
+        Memory Detection Agent
+                  │
+                  ▼
+         Importance Scoring
+                  │
+                  ▼
+         Memory Classification
+      ┌─────────┼──────────┐
+      ▼         ▼          ▼
+ Profile    Semantic    Episodic
+ MongoDB     Qdrant      Qdrant
+      │         │          │
+      └─────────┴──────────┘
+                  │
+             Neo4j Graph
+                  │
+                  ▼
+         Retrieval Engine
+                  │
+                  ▼
+          Context Builder
+                  │
+                  ▼
+             LLM Response
+                  │
+                  ▼
+          Memory Update Loop
 ```
 
-## Quick Start
+---
 
-### 1. Install Dependencies
+# 🧠 Memory Types
+
+## 👤 Profile Memory
+
+Stores
+
+- User preferences
+- Employee role
+- Skills
+- Team
+- Personal information
+
+Database
+
+MongoDB
+
+---
+
+## 📚 Semantic Memory
+
+Stores
+
+- Company knowledge
+- SOPs
+- Technical discussions
+- Architecture decisions
+
+Database
+
+Qdrant
+
+---
+
+## 🕒 Episodic Memory
+
+Stores
+
+- Conversations
+- Gmail threads
+- Project history
+- Meetings
+
+Database
+
+Qdrant
+
+---
+
+## 🎯 Goal Memory
+
+Stores
+
+- Tasks
+- Objectives
+- Follow-ups
+- Deadlines
+
+Database
+
+MongoDB
+
+---
+
+# 🔄 Memory Pipeline
+
+```
+Incoming Event
+
+↓
+
+Memory Detection
+
+↓
+
+Importance Scoring
+
+↓
+
+Memory Classification
+
+↓
+
+Embedding Generation
+
+↓
+
+Memory Storage
+
+↓
+
+Knowledge Graph Update
+
+↓
+
+Retriever
+
+↓
+
+Context Builder
+
+↓
+
+Grounded AI Response
+```
+
+---
+
+# 🏛 Tech Stack
+
+| Layer | Technology |
+|--------|------------|
+| Frontend | Next.js |
+| Backend | FastAPI |
+| Agent Framework | Mastra |
+| LLM | Mistral |
+| Embeddings | Mistral Embeddings |
+| Vector Database | Qdrant |
+| Graph Database | Neo4j |
+| Database | MongoDB |
+| Integrations | Composio |
+| Sources | Gmail, Google Chat |
+
+---
+
+# 🔌 Integrations
+
+✅ Gmail
+
+✅ Google Chat
+
+🚧 Google Drive
+
+🚧 Slack
+
+🚧 Notion
+
+🚧 Jira
+
+🚧 GitHub
+
+---
+
+# 🚀 Why Memora?
+
+Traditional RAG
+
+❌ Searches documents
+
+❌ Forgets after every session
+
+❌ No organizational memory
+
+❌ No user understanding
+
+❌ No relationship modeling
+
+---
+
+Memora
+
+✅ Continuously learns
+
+✅ Remembers conversations
+
+✅ Understands organizational context
+
+✅ Builds knowledge graphs
+
+✅ Retrieves personalized memories
+
+✅ Improves over time
+
+---
+
+# 🎯 Example
+
+Employee asks
+
+> Why did we migrate our backend to Kubernetes?
+
+Memora retrieves
+
+- Gmail discussion
+- Google Chat conversation
+- Meeting summary
+- Architecture decision
+- Previous implementation notes
+
+The AI answers using historical organizational knowledge instead of only the current conversation.
+
+---
+
+# 🌎 Use Cases
+
+- Enterprise Knowledge Retention
+- Employee Onboarding
+- AI Copilot Memory
+- Project Knowledge Management
+- Decision Tracking
+- Customer Success Memory
+- Internal Support Assistant
+
+---
+
+# 📈 Future Roadmap
+
+### Phase 1
+
+- Gmail
+- Google Chat
+- Persistent Memory
+
+### Phase 2
+
+- Slack
+- Google Drive
+- Notion
+
+### Phase 3
+
+- Jira
+- GitHub
+- Confluence
+
+### Phase 4
+
+- Enterprise Memory Cloud
+- Knowledge Analytics
+- Multi-Agent Memory
+
+---
+
+# 📷 Screenshots
+
+Add screenshots here
+
+```
+/docs/images/dashboard.png
+
+/docs/images/chat.png
+
+/docs/images/memory.png
+```
+
+---
+
+# 🛠 Installation
+
 ```bash
+git clone https://github.com/yourusername/memora.git
+
+cd memora
+
 pip install -r requirements.txt
+
+npm install
 ```
 
-### 2. Configure Environment
-```bash
-cp .env.example .env
-# Edit .env with your API keys and database URIs
-```
-
-### 3. Start the Backend
-```bash
-python -m uvicorn app.main:app --reload --port 8000
-```
-
-### 4. Open the Frontend
-```bash
-# Option A: Separate static server
-cd web && python -m http.server 3000
-# Open http://localhost:3000
-
-# Option B: Served by FastAPI
-# Open http://localhost:8000/web/index.html
-```
-
-## Project Structure
-
-```
-├── app/
-│   ├── config.py                 # Settings + LLM/Embedding provider protocols
-│   ├── schemas.py                # ALL Pydantic models
-│   ├── db_clients.py             # MongoDB + Qdrant + Neo4j clients
-│   ├── user_service.py           # User ID + conversation storage
-│   ├── memory_detector.py        # Single-call extraction + scoring
-│   ├── memory_router.py          # Routes by memory type
-│   ├── episodic_pipeline.py      # Qdrant dedup + store
-│   ├── semantic_pipeline.py      # Neo4j + Qdrant hybrid
-│   ├── profile_goal_pipeline.py  # MongoDB upsert
-│   ├── forgetting.py             # Decay + hard forget + explicit
-│   ├── context_builder.py        # Parallel retrieval + priority scoring
-│   └── main.py                   # FastAPI + LangGraph + routes
-├── web/                          # HTML/CSS/JS frontend
-├── scripts/cleanup_job.py        # Background hard-forgetting job
-├── tests/test_scenarios.py       # Unit tests (16 tests, no DB needed)
-└── e2e_test.py                   # Full integration test
-```
-
-## Memory Types
-
-| Type | Storage | Description |
-|------|---------|-------------|
-| **Episodic** | Qdrant | Specific events and experiences |
-| **Semantic** | Neo4j + Qdrant | Knowledge triples (subject → predicate → object) |
-| **Profile** | MongoDB | User identity, preferences, traits |
-| **Goals** | MongoDB | User objectives with status tracking |
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/health` | Health check |
-| `POST` | `/api/user/login` | Login/register by username |
-| `POST` | `/api/chat/send` | Send message, get response |
-| `POST` | `/api/chat/history` | Get conversation history |
-| `POST` | `/api/chat/sessions` | List all sessions |
-| `POST` | `/api/memories/list` | List all stored memories |
-| `POST` | `/api/memories/forget` | Explicitly forget memories |
-
-## Running Tests
+Run backend
 
 ```bash
-# Unit tests (no DB required)
-python tests/test_scenarios.py
-# or
-python -m pytest tests/test_scenarios.py -v
-
-# E2E test (requires running server + databases)
-python e2e_test.py
-
-# Background cleanup (dry run)
-python scripts/cleanup_job.py --dry-run
+uvicorn app.main:app --reload
 ```
 
-## Tech Stack
+Run frontend
 
-- **Python** + **FastAPI** — async API server
-- **LangGraph** — orchestration (write-path + read-path graphs)
-- **Qdrant** — vector search for episodic + semantic memories
-- **Neo4j** — knowledge graph for semantic triples
-- **MongoDB** — document store for users, conversations, profiles, goals
-- **Mistral AI** — LLM (configurable via `.env`)
+```bash
+npm run dev
+```
+
+---
+
+# 🏆 Built For
+
+**AI House National Finale 2026**
+
+Challenge Track
+
+**Knowledge Retention**
+
+---
+
+# 📜 License
+
+MIT License
+
+---
+
+<div align="center">
+
+## ⭐ Organizations Forget. Memora Doesn't.
+
+### Building the Memory Layer for Enterprise AI.
+
+</div>
