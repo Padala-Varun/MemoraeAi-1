@@ -1,4 +1,5 @@
-Description = We're not building another chatbot , we're    
+Description = 
+              We're not building another chatbot , we're    
               building the memory layer for enterprise AI.
 
               Every organization has a memory problem.
