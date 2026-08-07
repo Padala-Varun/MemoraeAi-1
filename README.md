@@ -419,6 +419,18 @@ MIT License
 
 ---
 
+# Testing
+
+Validated via manual end-to-end testing and automated unit tests.
+
+See [TESTING.md](TESTING.md) for the full checklist.
+
+```bash
+pytest tests/ -v
+```
+
+---
+
 <div align="center">
 
 ## ⭐ Organizations Forget. Memora Doesn't.
