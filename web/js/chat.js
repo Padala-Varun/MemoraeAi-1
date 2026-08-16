@@ -88,6 +88,10 @@ async function loadSessions() {
                     <div class="session-title">${escapeHtml(s.title)}</div>
                     <div class="session-meta">${s.message_count} msgs · ${formatDate(s.created_at)}</div>
                 </div>
+                <button class="session-delete-btn" title="Delete chat"
+                        onclick="event.stopPropagation(); deleteSession('${escapeHtml(s.session_id)}')">
+                    🗑
+                </button>
             </div>
         `).join('');
 
@@ -119,6 +123,49 @@ function startNewChat() {
 
     document.getElementById('chat-input').focus();
     closeSidebarMobile();
+}
+
+async function deleteSession(sessionId) {
+    if (!confirm('Delete this chat? This cannot be undone.')) return;
+
+    const userId = AppState.get('userId');
+
+    try {
+        await api.deleteSession(userId, sessionId);
+
+        // If the deleted session was the active one, clear the chat area
+        if (AppState.get('currentSessionId') === sessionId) {
+            AppState.set('currentSessionId', null);
+            const messagesEl = document.getElementById('messages-container');
+            messagesEl.innerHTML = '';
+            showWelcome();
+        }
+
+        // Remove the session item from the sidebar with animation
+        const itemEl = document.querySelector(`.session-item[data-session-id="${sessionId}"]`);
+        if (itemEl) {
+            itemEl.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+            itemEl.style.opacity = '0';
+            itemEl.style.transform = 'translateX(-20px)';
+            setTimeout(() => {
+                itemEl.remove();
+                // If no sessions left, show empty state
+                const listEl = document.getElementById('session-list');
+                if (!listEl.querySelector('.session-item')) {
+                    listEl.innerHTML = `
+                        <div class="empty-state" style="padding: 32px 16px;">
+                            <div class="empty-state-icon">💬</div>
+                            <div class="empty-state-description">No conversations yet.<br>Start a new chat!</div>
+                        </div>`;
+                }
+            }, 250);
+        }
+
+        Toast.success('Chat deleted.');
+    } catch (error) {
+        console.error('Failed to delete session:', error);
+        Toast.error('Failed to delete chat.');
+    }
 }
 
 // ── Chat History ──

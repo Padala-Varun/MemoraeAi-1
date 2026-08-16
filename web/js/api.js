@@ -64,6 +64,13 @@ class MemoraeAPI {
         });
     }
 
+    async deleteSession(userId, sessionId) {
+        return this._request('/api/chat/delete', {
+            method: 'POST',
+            body: JSON.stringify({ user_id: userId, session_id: sessionId }),
+        });
+    }
+
     // ── Memories ──
     async listMemories(userId) {
         return this._request('/api/memories/list', {

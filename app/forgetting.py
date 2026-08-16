@@ -278,10 +278,10 @@ async def explicit_forget(
     assert user_id and user_id.strip(), "user_id MUST be provided."
 
     from qdrant_client.http.models import Filter, FieldCondition, MatchValue  # pyrefly: ignore
-    from app.db_clients import get_qdrant_client, get_neo4j_driver, goals_collection
+    from app.db_clients import get_qdrant_client, get_neo4j_driver, goals_collection, profiles_collection
 
     settings = get_settings()
-    deleted = {"episodic": 0, "semantic": 0, "goals": 0}
+    deleted = {"episodic": 0, "semantic": 0, "goals": 0, "profile_traits": 0}
 
     # 1. Search and delete from Qdrant episodic
     try:
@@ -328,6 +328,24 @@ async def explicit_forget(
         driver = get_neo4j_driver()
         search_lower = search_text.lower()
         async with driver.session(database=settings.NEO4J_DATABASE) as session:
+            # First, fetch the triples that will be marked outdated so we can
+            # sync Qdrant afterwards.
+            fetch_result = await session.run(
+                """
+                MATCH (s:Entity {user_id: $user_id})
+                      -[r:RELATES_TO {status: 'active'}]->
+                      (o:Entity {user_id: $user_id})
+                WHERE toLower(s.name) CONTAINS $search
+                   OR toLower(o.name) CONTAINS $search
+                   OR toLower(r.predicate) CONTAINS $search
+                RETURN s.name AS subject, r.predicate AS predicate, o.name AS object
+                """,
+                user_id=user_id,
+                search=search_lower,
+            )
+            matched_triples = await fetch_result.data()
+
+            # Now mark them as outdated in Neo4j
             result = await session.run(
                 """
                 MATCH (s:Entity {user_id: $user_id})
@@ -352,6 +370,32 @@ async def explicit_forget(
                 )
                 await audit_log_collection().insert_one(audit.model_dump())
                 deleted["semantic"] = record["updated"]
+
+            # Sync Qdrant semantic_facts: set status to 'outdated' for matched triples
+            if matched_triples:
+                client = get_qdrant_client()
+                for triple in matched_triples:
+                    try:
+                        scroll = client.scroll(
+                            collection_name=settings.QDRANT_SEMANTIC_COLLECTION,
+                            scroll_filter=Filter(
+                                must=[
+                                    FieldCondition(key="user_id", match=MatchValue(value=user_id)),
+                                    FieldCondition(key="subject", match=MatchValue(value=triple["subject"])),
+                                    FieldCondition(key="predicate", match=MatchValue(value=triple["predicate"])),
+                                    FieldCondition(key="object", match=MatchValue(value=triple["object"])),
+                                ]
+                            ),
+                            limit=10,
+                        )
+                        for point in scroll[0]:
+                            client.set_payload(
+                                collection_name=settings.QDRANT_SEMANTIC_COLLECTION,
+                                payload={"status": "outdated"},
+                                points=[str(point.id)],
+                            )
+                    except Exception as qe:
+                        logger.warning("Failed to sync Qdrant semantic fact status: %s", qe)
 
     except Exception as e:
         logger.error("Explicit forget (Neo4j) failed: %s", e)
@@ -378,6 +422,35 @@ async def explicit_forget(
 
     except Exception as e:
         logger.error("Explicit forget (MongoDB goals) failed: %s", e)
+
+    # 4. Search and remove matching profile traits from MongoDB
+    try:
+        profile = await profiles_collection().find_one({"user_id": user_id})
+        if profile and profile.get("traits"):
+            search_lower = search_text.lower()
+            traits_to_remove = [
+                t for t in profile["traits"]
+                if search_lower in t.lower()
+            ]
+            if traits_to_remove:
+                await profiles_collection().update_one(
+                    {"user_id": user_id},
+                    {"$pull": {"traits": {"$in": traits_to_remove}}},
+                )
+                audit = AuditLogEntry(
+                    user_id=user_id,
+                    action="user_forget_request",
+                    memory_type="profile_trait",
+                    details=f"User forget: removed {len(traits_to_remove)} trait(s) matching '{search_text[:60]}'",
+                )
+                await audit_log_collection().insert_one(audit.model_dump())
+                deleted["profile_traits"] = len(traits_to_remove)
+                logger.info(
+                    "Removed profile traits for user %s: %s",
+                    user_id, traits_to_remove,
+                )
+    except Exception as e:
+        logger.error("Explicit forget (profile traits) failed: %s", e)
 
     logger.info(
         "Explicit forget for user %s ('%s'): %s",

@@ -233,7 +233,7 @@ class AuditLogEntry(BaseModel):
         "user_forget_request",
         "importance_discard",
     ] = Field(..., description="Type of audit action.")
-    memory_type: Literal["episodic", "semantic_fact", "profile_update", "goal"]
+    memory_type: Literal["episodic", "semantic_fact", "profile_update", "profile_trait", "goal"]
     memory_id: str | None = Field(default=None, description="ID of affected memory.")
     details: str = Field(default="", description="Human-readable details.")
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -304,3 +304,9 @@ class ForgetRequest(BaseModel):
         min_length=1,
         description="Text describing what to forget.",
     )
+
+
+class DeleteSessionRequest(BaseModel):
+    """Request body for deleting a chat session."""
+    user_id: str = Field(..., min_length=1)
+    session_id: str = Field(..., min_length=1)

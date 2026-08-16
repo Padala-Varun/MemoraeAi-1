@@ -42,6 +42,7 @@ from app.schemas import (
     SessionsRequest,
     MemoryListRequest,
     ForgetRequest,
+    DeleteSessionRequest,
     ExtractedMemory,
 )
 from app.user_service import (
@@ -51,6 +52,7 @@ from app.user_service import (
     get_full_session_text,
     mark_memory_processed,
     get_session_list,
+    delete_session,
 )
 from app.memory_detector import detect_memories
 from app.memory_router import route_memories
@@ -68,6 +70,69 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+
+
+# ══════════════════════════════════════════════
+# Forget Intent Detection (keyword-based, no LLM call)
+# ══════════════════════════════════════════════
+
+_FORGET_PATTERNS = [
+    "remove", "forget", "delete", "erase", "clear",
+    "don't remember", "stop remembering", "wipe",
+]
+
+_MEMORY_KEYWORDS = [
+    "memory", "from memory", "from your memory",
+    "remember", "about me", "that i", "that my",
+    "i like", "i love", "i hate", "i prefer",
+    "my",
+]
+
+# Words to strip from the search text
+_STRIP_PHRASES = [
+    "please", "can you", "could you", "i want you to",
+    "remove", "forget", "delete", "erase", "clear", "wipe",
+    "from memory", "from your memory", "in your memory",
+    "the memory", "the fact", "the note",
+    "that", "about", "stop remembering",
+    "don't remember", "do not remember",
+]
+
+
+def _detect_forget_intent(message: str) -> str | None:
+    """Detect if the user wants to forget something.
+
+    Returns the cleaned search text to pass to explicit_forget(), or None
+    if the message is not a forget request.
+    """
+    lower = message.lower().strip()
+
+    # Must contain at least one forget-action word
+    if not any(p in lower for p in _FORGET_PATTERNS):
+        return None
+
+    # Must also contain a memory-related keyword to avoid false positives
+    # (e.g. "delete this file" should not trigger memory forget)
+    if not any(k in lower for k in _MEMORY_KEYWORDS):
+        return None
+
+    # Extract the search text by stripping command/boilerplate phrases
+    search = lower
+    for phrase in _STRIP_PHRASES:
+        search = search.replace(phrase, "")
+
+    # Clean up extra whitespace
+    search = " ".join(search.split()).strip()
+
+    if len(search) < 2:
+        # Fallback: use the original message minus obvious command words
+        search = lower
+        for cmd in ["please", "can you", "could you", "remove", "forget",
+                    "delete", "from memory", "from your memory"]:
+            search = search.replace(cmd, "")
+        search = " ".join(search.split()).strip()
+
+    return search if len(search) >= 2 else None
 
 
 # ══════════════════════════════════════════════
@@ -423,6 +488,20 @@ def create_app() -> FastAPI:
             content=request.message,
         )
 
+        # Step 1.5: Detect forget intent BEFORE generating response
+        forget_search = _detect_forget_intent(request.message)
+        forget_result = None
+        if forget_search:
+            logger.info(
+                "Forget intent detected for user %s: search='%s'",
+                request.user_id, forget_search[:60],
+            )
+            forget_result = await explicit_forget(
+                user_id=request.user_id,
+                search_text=forget_search,
+            )
+            logger.info("Forget result: %s", forget_result)
+
         # Step 2: Generate response via read-path LangGraph
         response_text = await generate_response(
             user_id=request.user_id,
@@ -438,15 +517,22 @@ def create_app() -> FastAPI:
             content=response_text,
         )
 
-        # Step 4: Trigger async memory extraction (non-blocking)
-        asyncio.create_task(
-            _background_memory_extraction(request.user_id, session_id)
-        )
+        # Step 4: Trigger async memory extraction ONLY if this was NOT a forget request
+        # (to prevent re-extracting the very memories the user just asked to delete)
+        if not forget_result:
+            asyncio.create_task(
+                _background_memory_extraction(request.user_id, session_id)
+            )
+        else:
+            logger.info(
+                "Skipping memory extraction for forget request (user=%s, session=%s)",
+                request.user_id, session_id,
+            )
 
         return ChatResponse(
             session_id=session_id,
             response=response_text,
-            memories_extracted=True,
+            memories_extracted=not bool(forget_result),
         )
 
     @app.post("/api/chat/history")
@@ -476,6 +562,25 @@ def create_app() -> FastAPI:
             )
             for s in sessions
         ]
+
+    @app.post("/api/chat/delete")
+    async def delete_chat_session(request: DeleteSessionRequest) -> dict[str, object]:
+        """Delete a chat session and all its messages."""
+        if not request.user_id.strip():
+            raise HTTPException(status_code=400, detail="user_id is required.")
+        if not request.session_id.strip():
+            raise HTTPException(status_code=400, detail="session_id is required.")
+
+        deleted_count = await delete_session(
+            user_id=request.user_id,
+            session_id=request.session_id,
+        )
+        return {
+            "status": "deleted",
+            "session_id": request.session_id,
+            "messages_deleted": deleted_count,
+        }
+
 
     # ── Memory Routes ──
     @app.post("/api/memories/list")

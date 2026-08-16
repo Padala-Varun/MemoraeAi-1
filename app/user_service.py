@@ -233,3 +233,29 @@ async def get_session_list(user_id: str) -> list[dict[str, object]]:
         })
 
     return sessions
+
+
+async def delete_session(user_id: str, session_id: str) -> int:
+    """Delete all messages in a chat session.
+
+    Args:
+        user_id: Owner user ID. MUST be provided.
+        session_id: Session to delete.
+
+    Returns:
+        int: Number of messages deleted.
+    """
+    assert user_id and user_id.strip(), "user_id MUST be provided."
+    assert session_id and session_id.strip(), "session_id MUST be provided."
+
+    collection = conversations_collection()
+    result = await collection.delete_many({
+        "user_id": user_id,
+        "session_id": session_id,
+    })
+
+    logger.info(
+        "Deleted session %s for user %s: %d messages removed.",
+        session_id, user_id, result.deleted_count,
+    )
+    return result.deleted_count

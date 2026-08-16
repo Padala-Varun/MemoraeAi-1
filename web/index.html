@@ -196,7 +196,7 @@
 
         .session-item {
             display: flex;
-            flex-direction: column;
+            align-items: center;
             gap: 2px;
             padding: 10px 12px;
             border-radius: 8px;
@@ -206,6 +206,11 @@
 
         .session-item:hover { background: #f5f5f5; }
         .session-item.active { background: #f0f0f0; }
+
+        .session-info {
+            flex: 1;
+            min-width: 0;
+        }
 
         .session-title {
             font-size: 0.88rem;
@@ -219,6 +224,26 @@
         .session-meta {
             font-size: 0.75rem;
             color: #999;
+        }
+
+        .session-delete-btn {
+            opacity: 0.4;
+            background: none;
+            border: none;
+            color: #999;
+            font-size: 0.82rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.15s;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+
+        .session-delete-btn:hover {
+            opacity: 1;
+            color: #dc3545;
+            background: rgba(220, 53, 69, 0.08);
         }
 
         .empty-sessions {
@@ -1084,7 +1109,9 @@
        ========================================================= */
 
     // ── API ──
-    const API_BASE = 'https://varun1432varun1432--memorae-ai-web.modal.run';
+    const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+        ? 'http://127.0.0.1:8000'
+        : 'https://varun1432varun1432--memorae-ai-web.modal.run';
 
     class MemoraeAPI {
         constructor(base = API_BASE) { this.base = base; }
@@ -1131,6 +1158,10 @@
 
         forgetMemory(userId, searchText) {
             return this._req('/api/memories/forget', { method: 'POST', body: JSON.stringify({ user_id: userId, search_text: searchText }) });
+        }
+
+        deleteSession(userId, sessionId) {
+            return this._req('/api/chat/delete', { method: 'POST', body: JSON.stringify({ user_id: userId, session_id: sessionId }) });
         }
 
         healthCheck() { return this._req('/health'); }
@@ -1290,8 +1321,12 @@
                 <div class="session-item ${s.session_id === AppState.get('currentSessionId') ? 'active' : ''}"
                      data-session-id="${esc(s.session_id)}"
                      onclick="selectSession('${esc(s.session_id)}')">
-                    <div class="session-title">${esc(s.title)}</div>
-                    <div class="session-meta">${s.message_count} msgs &middot; ${formatDate(s.created_at)}</div>
+                    <div class="session-info">
+                        <div class="session-title">${esc(s.title)}</div>
+                        <div class="session-meta">${s.message_count} msgs &middot; ${formatDate(s.created_at)}</div>
+                    </div>
+                    <button class="session-delete-btn" title="Delete chat"
+                            onclick="event.stopPropagation(); deleteSession('${esc(s.session_id)}')">&#128465;</button>
                 </div>
             `).join('');
         } catch (err) {
@@ -1315,6 +1350,42 @@
         showWelcome();
         document.getElementById('chat-input').focus();
         closeSidebarMobile();
+    }
+
+    async function deleteSession(sessionId) {
+        if (!confirm('Delete this chat? This cannot be undone.')) return;
+
+        const userId = AppState.get('userId');
+        try {
+            await api.deleteSession(userId, sessionId);
+
+            // If deleted session was active, clear chat area
+            if (AppState.get('currentSessionId') === sessionId) {
+                AppState.set('currentSessionId', null);
+                document.getElementById('messages-container').innerHTML = '';
+                showWelcome();
+            }
+
+            // Animate removal
+            const itemEl = document.querySelector(`.session-item[data-session-id="${sessionId}"]`);
+            if (itemEl) {
+                itemEl.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+                itemEl.style.opacity = '0';
+                itemEl.style.transform = 'translateX(-20px)';
+                setTimeout(() => {
+                    itemEl.remove();
+                    const listEl = document.getElementById('session-list');
+                    if (!listEl.querySelector('.session-item')) {
+                        listEl.innerHTML = '<div class="empty-sessions">No conversations yet. Start a new chat.</div>';
+                    }
+                }, 250);
+            }
+
+            Toast.success('Chat deleted.');
+        } catch (err) {
+            console.error('Failed to delete session:', err);
+            Toast.error('Failed to delete chat: ' + err.message);
+        }
     }
 
     // History

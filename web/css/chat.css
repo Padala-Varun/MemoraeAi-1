@@ -125,6 +125,26 @@
     margin-top: 2px;
 }
 
+.session-delete-btn {
+    opacity: 0.5;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.session-delete-btn:hover {
+    opacity: 1;
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.12);
+}
+
 /* ── Main Chat Area ── */
 .chat-main {
     flex: 1;
