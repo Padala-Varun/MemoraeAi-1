@@ -70,7 +70,7 @@ def test_config_settings_defaults():
         QDRANT_API_KEY="test",
     )
     assert s.LLM_PROVIDER == "mistral"
-    assert s.LLM_MODEL == "mistral-small-2506"
+    assert s.LLM_MODEL == "mistral-small-2603"
     assert s.EMBEDDING_DIMENSION == 1024
     assert s.DEDUP_SIMILARITY_THRESHOLD == 0.90
     assert s.CONFIDENCE_THRESHOLD == 0.6

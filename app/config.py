@@ -68,7 +68,7 @@ class Settings(BaseSettings):
 
     # --- LLM Provider ---
     LLM_PROVIDER: str = "mistral"
-    LLM_MODEL: str = "mistral-small-2506"
+    LLM_MODEL: str = "mistral-small-2603"
     EMBEDDING_MODEL: str = "mistral-embed"
     EMBEDDING_DIMENSION: int = 1024
 
