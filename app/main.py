@@ -558,6 +558,7 @@ def create_app() -> FastAPI:
                 session_id=str(s["session_id"]),
                 title=str(s["title"]),
                 created_at=str(s["created_at"]),
+                last_active=str(s["last_active"]),
                 message_count=int(s["message_count"]),  # pyrefly: ignore
             )
             for s in sessions

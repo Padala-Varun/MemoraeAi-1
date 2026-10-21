@@ -283,6 +283,7 @@ class SessionInfo(BaseModel):
     session_id: str
     title: str
     created_at: str
+    last_active: str
     message_count: int
 
 

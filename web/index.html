@@ -1323,7 +1323,7 @@
                      onclick="selectSession('${esc(s.session_id)}')">
                     <div class="session-info">
                         <div class="session-title">${esc(s.title)}</div>
-                        <div class="session-meta">${s.message_count} msgs &middot; ${formatDate(s.created_at)}</div>
+                        <div class="session-meta">${s.message_count} msgs &middot; ${formatDate(s.last_active || s.created_at)}</div>
                     </div>
                     <button class="session-delete-btn" title="Delete chat"
                             onclick="event.stopPropagation(); deleteSession('${esc(s.session_id)}')">&#128465;</button>

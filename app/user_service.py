@@ -193,10 +193,23 @@ async def mark_memory_processed(
         )
 
 
+def _to_utc_iso(value: object) -> str:
+    """Serialize a timestamp as ISO 8601 with an explicit UTC offset.
+
+    MongoDB returns naive datetimes (implicitly UTC); without an offset,
+    browsers parse them as local time.
+    """
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.isoformat()
+    return str(value)
+
+
 async def get_session_list(user_id: str) -> list[dict[str, object]]:
     """List all chat sessions for a user, with title from first message.
 
-    Returns sessions ordered by most recent first.
+    Returns sessions ordered by most recent activity first.
     """
     assert user_id and user_id.strip(), "user_id MUST be provided."
 
@@ -210,9 +223,10 @@ async def get_session_list(user_id: str) -> list[dict[str, object]]:
             "first_message": {"$first": "$content"},
             "first_role": {"$first": "$role"},
             "created_at": {"$first": "$timestamp"},
+            "last_active": {"$last": "$timestamp"},
             "message_count": {"$sum": 1},
         }},
-        {"$sort": {"created_at": -1}},
+        {"$sort": {"last_active": -1}},
         {"$limit": 50},
     ]
 
@@ -224,11 +238,8 @@ async def get_session_list(user_id: str) -> list[dict[str, object]]:
         sessions.append({
             "session_id": doc["_id"],
             "title": title,
-            "created_at": (
-                doc["created_at"].isoformat()
-                if hasattr(doc["created_at"], "isoformat")
-                else str(doc["created_at"])
-            ),
+            "created_at": _to_utc_iso(doc["created_at"]),
+            "last_active": _to_utc_iso(doc["last_active"]),
             "message_count": doc["message_count"],
         })
 

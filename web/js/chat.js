@@ -86,7 +86,7 @@ async function loadSessions() {
                 <span class="session-icon">💬</span>
                 <div class="session-info">
                     <div class="session-title">${escapeHtml(s.title)}</div>
-                    <div class="session-meta">${s.message_count} msgs · ${formatDate(s.created_at)}</div>
+                    <div class="session-meta">${s.message_count} msgs · ${formatDate(s.last_active || s.created_at)}</div>
                 </div>
                 <button class="session-delete-btn" title="Delete chat"
                         onclick="event.stopPropagation(); deleteSession('${escapeHtml(s.session_id)}')">
