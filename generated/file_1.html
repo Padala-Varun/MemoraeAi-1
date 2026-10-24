@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authenticate | NeuralChat</title>
+    <link rel="stylesheet" href="../css/login.css">
+    <link rel="stylesheet" href="../css/auth.css">
+</head>
+<body class="auth-page">
+    <canvas class="neural-canvas" id="neural-bg"></canvas>
+
+    <div class="auth-container">
+        <div class="auth-card">
+            <!-- Auth Mode Toggle -->
+            <div class="auth-mode-toggle">
+                <button id="login-mode-btn" class="active">Login</button>
+                <button id="signup-mode-btn">Sign Up</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form">
+                <div class="form-group">
+                    <label for="username-input">Username or Email</label>
+                    <input type="text" id="username-input" placeholder="Enter your username or email" autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="password-input">Password</label>
+                    <input type="password" id="password-input" placeholder="Enter your password" autocomplete="current-password">
+                </div>
+
+                <div id="login-error" class="error-message"></div>
+
+                <button type="submit" id="login-btn" class="btn-primary">Login</button>
+
+                <div class="auth-footer">
+                    <a href="#" id="forgot-password-link">Forgot password?</a>
+                </div>
+            </form>
+
+            <!-- Signup Form (hidden by default) -->
+            <form id="signup-form" class="auth-form hidden">
+                <div class="form-group">
+                    <label for="signup-username">Username</label>
+                    <input type="text" id="signup-username" placeholder="Choose a username" autocomplete="username">
+                    <div id="username-availability" class="input-feedback"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="signup-email">Email</label>
+                    <input type="email" id="signup-email" placeholder="Your email address" autocomplete="email">
+                </div>
+
+                <div class="form-group">
+                    <label for="signup-password">Password</label>
+                    <input type="password" id="signup-password" placeholder="Create a password" autocomplete="new-password">
+                    <div class="password-strength">
+                        <div id="password-strength-bar" class="password-strength-bar"></div>
+                    </div>
+                    <div id="password-requirements" class="input-feedback">
+                        <ul>
+                            <li id="req-length">At least 12 characters</li>
+                            <li id="req-uppercase">Uppercase letter</li>
+                            <li id="req-lowercase">Lowercase letter</li>
+                            <li id="req-number">Number</li>
+                            <li id="req-special">Special character</li>
+                            <li id="req-common">Not a common password</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm-password">Confirm Password</label>
+                    <input type="password" id="confirm-password" placeholder="Confirm your password" autocomplete="new-password">
+                </div>
+
+                <div id="signup-error" class="error-message"></div>
+
+                <button type="submit" id="signup-btn" class="btn-primary">Create Account</button>
+
+                <div class="auth-footer">
+                    <p>By signing up, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
+                </div>
+            </form>
+
+            <!-- Forgot Password Form (hidden by default) -->
+            <form id="forgot-password-form" class="auth-form hidden">
+                <div class="form-group">
+                    <label for="forgot-email">Email</label>
+                    <input type="email" id="forgot-email" placeholder="Enter your email address" autocomplete="email">
+                    <div class="input-feedback">We'll send a password reset link to this email</div>
+                </div>
+
+                <div id="forgot-error" class="error-message"></div>
+
+                <button type="submit" id="forgot-btn" class="btn-primary">Reset Password</button>
+
+                <div class="auth-footer">
+                    <a href="#" id="back-to-login-link">Back to login</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="../js/login.js"></script>
+    <script src="../js/auth-forms.js"></script>
+    <script src="../js/password-strength.js"></script>
+    <script src="../js/username-validation.js"></script>
+    <script>
+        // Initialize the authentication page
+        document.addEventListener('DOMContentLoaded', () => {
+            initNeuralBackground();
+            initAuthForm();
+            initUsernameValidation();
+        });
+    </script>
+</body>
+</html>
