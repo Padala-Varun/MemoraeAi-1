@@ -1,0 +1,251 @@
+/* ═══════════════════════════════════════════════
+   Authentication Page Styles
+   Unified login/signup interface
+   ═══════════════════════════════════════════════ */
+
+/* ── Auth Page Layout ── */
+.auth-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: var(--space-lg);
+}
+
+/* ── Auth Container ── */
+.auth-container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 440px;
+    animation: slide-up 0.6s ease-out;
+}
+
+/* ── Auth Card ── */
+.auth-card {
+    position: relative;
+    padding: var(--space-2xl) var(--space-xl);
+    overflow: hidden;
+}
+
+/* Animated gradient border */
+.auth-card::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    background: var(--accent-gradient);
+    border-radius: calc(var(--radius-lg) + 2px);
+    z-index: -1;
+    opacity: 0.6;
+    animation: rotate-gradient 6s linear infinite;
+    background-size: 200% 200%;
+}
+
+.auth-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--glass-bg);
+    border-radius: var(--radius-lg);
+    z-index: 0;
+}
+
+/* ── Auth Mode Toggle ── */
+.auth-mode-toggle {
+    display: flex;
+    margin-bottom: var(--space-xl);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    overflow: hidden;
+}
+
+.auth-mode-toggle button {
+    flex: 1;
+    padding: var(--space-md) var(--space-lg);
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.auth-mode-toggle button.active {
+    background: var(--accent-gradient);
+    color: var(--text-primary);
+    position: relative;
+}
+
+.auth-mode-toggle button.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent-color);
+}
+
+/* ── Auth Forms ── */
+.auth-form {
+    position: relative;
+    z-index: 1;
+}
+
+.auth-form.hidden {
+    display: none;
+}
+
+.form-group {
+    margin-bottom: var(--space-lg);
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: var(--space-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.form-group input {
+    width: 100%;
+    padding: var(--space-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--input-bg);
+    color: var(--text-primary);
+    transition: border-color 0.3s ease;
+}
+
+.form-group input:focus {
+    border-color: var(--accent-color);
+    outline: none;
+}
+
+/* ── Password Strength ── */
+.password-strength {
+    margin-top: var(--space-sm);
+    height: 4px;
+    background: var(--bg-secondary);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.password-strength-bar {
+    height: 100%;
+    width: 0;
+    background: var(--accent-gradient);
+    transition: width 0.3s ease;
+}
+
+/* ── Input Feedback ── */
+.input-feedback {
+    margin-top: var(--space-sm);
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+}
+
+.input-feedback ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.input-feedback li {
+    position: relative;
+    padding-left: 1.2em;
+    margin-bottom: 0.2em;
+}
+
+.input-feedback li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--success-color);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.input-feedback li.valid::before {
+    opacity: 1;
+}
+
+.input-feedback li.invalid::before {
+    content: '✗';
+    color: var(--error-color);
+    opacity: 1;
+}
+
+/* ── Error Messages ── */
+.error-message {
+    color: var(--error-color);
+    margin-bottom: var(--space-lg);
+    font-size: var(--text-sm);
+    min-height: 20px;
+}
+
+/* ── Auth Footer ── */
+.auth-footer {
+    margin-top: var(--space-xl);
+    text-align: center;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+
+.auth-footer a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+
+/* ── Loading State ── */
+.btn-primary.loading {
+    position: relative;
+    color: transparent;
+}
+
+.btn-primary.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    transform: translate(-50%, -50%);
+}
+
+/* ── Animations ── */
+@keyframes rotate-gradient {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+@keyframes spin {
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
